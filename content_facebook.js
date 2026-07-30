@@ -156,7 +156,7 @@ async function fillListing(data) {
   lines.push('📲 DM us or comment below to get started!');
   lines.push('#SubprimeAuto #CarLoans #BadCredit #GetApproved #EasyAutoLoans');
   try {
-    const desc = findInputNearLabel('Description', 'textarea') || document.querySelector('textarea[placeholder*="escription" i], textarea[aria-label*="escription" i]');
+    const desc = document.querySelector('textarea') || findInputNearLabel('Description', 'textarea');
     if (desc) setNativeValue(desc, lines.join('\n'));
   } catch(_) {}
   if (data.images?.length) {

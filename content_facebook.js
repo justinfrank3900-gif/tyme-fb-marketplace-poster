@@ -43,17 +43,18 @@ async function clickDropdownAndSelect(trigger, optionText) {
 }
 
 async function fillListing(data) {
-  await new Promise(r => setTimeout(r, 1500));
+  await new Promise(r => setTimeout(r, 2000));
 
-  // Vehicle Type: always default to the first option ("Car/Truck")
+  // Vehicle Type: always default to the first option ("Car/Truck").
+  // This is the very first field and gates everything below it, so it goes first.
   try {
     const typeTrigger = findClickableByText('Vehicle type', false) || findClickableByText('Car/Truck', false);
     if (typeTrigger) {
       typeTrigger.click();
-      await new Promise(r => setTimeout(r, 600));
+      await new Promise(r => setTimeout(r, 700));
       const firstOption = document.querySelector('[role="option"], [role="menuitem"], li[role]');
       if (firstOption) firstOption.click();
-      await new Promise(r => setTimeout(r, 300));
+      await new Promise(r => setTimeout(r, 800));
     }
   } catch(_) {}
 
@@ -62,20 +63,47 @@ async function fillListing(data) {
     try {
       const yearTrigger = findClickableByText('Year', true);
       await clickDropdownAndSelect(yearTrigger, data.year);
+      await new Promise(r => setTimeout(r, 500));
     } catch(_) {}
   }
 
-  // Make / Model (plain text inputs)
+  // Make (custom dropdown) - gates Model/Mileage/Color appearing below it,
+  // so we wait after selecting it rather than rushing straight to Model.
   if (data.make) {
     try {
-      const makeEl = await waitForEl('input[aria-label*="Make" i], input[placeholder*="Make" i]', 4000);
-      setNativeValue(makeEl, data.make);
+      const makeTrigger = findClickableByText('Make', true);
+      await clickDropdownAndSelect(makeTrigger, data.make);
+      await new Promise(r => setTimeout(r, 800));
     } catch(_) {}
   }
+
+  // Model (plain text input, appears after Make is set)
   if (data.model) {
     try {
-      const modelEl = await waitForEl('input[aria-label*="Model" i], input[placeholder*="Model" i]', 4000);
+      const modelEl = await waitForEl('input[aria-label*="Model" i], input[placeholder*="Model" i]', 6000);
       setNativeValue(modelEl, data.model);
+      await new Promise(r => setTimeout(r, 400));
+    } catch(_) {}
+  }
+
+  // Mileage (plain text input)
+  if (data.kms) {
+    try {
+      const kmNum = String(data.kms).replace(/[^0-9]/g, '');
+      if (kmNum) {
+        const mileageEl = await waitForEl('input[aria-label*="Mileage" i], input[placeholder*="Mileage" i]', 5000);
+        setNativeValue(mileageEl, kmNum);
+        await new Promise(r => setTimeout(r, 400));
+      }
+    } catch(_) {}
+  }
+
+  // Exterior color (custom dropdown)
+  if (data.color) {
+    try {
+      const colorTrigger = findClickableByText('Exterior color', true) || findClickableByText('Exterior colour', true);
+      await clickDropdownAndSelect(colorTrigger, data.color);
+      await new Promise(r => setTimeout(r, 400));
     } catch(_) {}
   }
 
@@ -103,7 +131,7 @@ async function fillListing(data) {
   lines.push('📲 DM us or comment below to get started!');
   lines.push('#SubprimeAuto #CarLoans #BadCredit #GetApproved #EasyAutoLoans');
   try {
-    const desc = await waitForEl('textarea[placeholder*="escription"], textarea[aria-label*="escription"]', 5000);
+    const desc = await waitForEl('textarea[placeholder*="escription"], textarea[aria-label*="escription"]', 6000);
     setNativeValue(desc, lines.join('\n'));
   } catch(_) {}
   if (data.images?.length) {

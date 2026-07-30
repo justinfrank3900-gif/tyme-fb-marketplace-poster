@@ -18,8 +18,67 @@ function setNativeValue(el, value) {
   el.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
+// Facebook's Year / Vehicle Type fields are custom click-to-open dropdowns, not native
+// <select> elements - filling them needs a click + wait + click-the-option sequence.
+function findClickableByText(text, exact=true) {
+  const candidates = Array.from(document.querySelectorAll('div[role="combobox"], div[role="button"], span, label'));
+  return candidates.find(el => {
+    if (el.offsetParent === null) return false; // skip hidden
+    const t = el.textContent.trim();
+    return exact ? t === text : t.toLowerCase().includes(text.toLowerCase());
+  }) || null;
+}
+
+async function clickDropdownAndSelect(trigger, optionText) {
+  if (!trigger) return false;
+  trigger.click();
+  await new Promise(r => setTimeout(r, 600));
+  const options = Array.from(document.querySelectorAll('[role="option"], [role="menuitem"], li[role]'));
+  const match = options.find(o => o.textContent.trim().toLowerCase() === optionText.toLowerCase())
+    || options.find(o => o.textContent.trim().toLowerCase().includes(optionText.toLowerCase()));
+  if (match) { match.click(); await new Promise(r => setTimeout(r, 300)); return true; }
+  // Close the dropdown if nothing matched, so it doesn't sit open over other fields
+  document.body.click();
+  return false;
+}
+
 async function fillListing(data) {
   await new Promise(r => setTimeout(r, 1500));
+
+  // Vehicle Type: always default to the first option ("Car/Truck")
+  try {
+    const typeTrigger = findClickableByText('Vehicle type', false) || findClickableByText('Car/Truck', false);
+    if (typeTrigger) {
+      typeTrigger.click();
+      await new Promise(r => setTimeout(r, 600));
+      const firstOption = document.querySelector('[role="option"], [role="menuitem"], li[role]');
+      if (firstOption) firstOption.click();
+      await new Promise(r => setTimeout(r, 300));
+    }
+  } catch(_) {}
+
+  // Year (custom dropdown)
+  if (data.year) {
+    try {
+      const yearTrigger = findClickableByText('Year', true);
+      await clickDropdownAndSelect(yearTrigger, data.year);
+    } catch(_) {}
+  }
+
+  // Make / Model (plain text inputs)
+  if (data.make) {
+    try {
+      const makeEl = await waitForEl('input[aria-label*="Make" i], input[placeholder*="Make" i]', 4000);
+      setNativeValue(makeEl, data.make);
+    } catch(_) {}
+  }
+  if (data.model) {
+    try {
+      const modelEl = await waitForEl('input[aria-label*="Model" i], input[placeholder*="Model" i]', 4000);
+      setNativeValue(modelEl, data.model);
+    } catch(_) {}
+  }
+
   const priceNum = (data.todayPrice || '').replace(/[^0-9]/g, '');
   if (priceNum) {
     try {
@@ -31,6 +90,10 @@ async function fillListing(data) {
   if (data.todayPrice) lines.push(`💰 ${data.todayPrice}`);
   if (data.kms) lines.push(`📍 ${data.kms}${data.color ? ` | ${data.color}` : ''}`);
   if (data.biweeklyPayment) lines.push(`✅ ${data.biweeklyPayment}`);
+  if (data.description) {
+    lines.push('');
+    lines.push(data.description);
+  }
   if (data.features?.length) {
     lines.push('');
     lines.push('🔑 KEY FEATURES:');

@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "TYME Auto - Post to Facebook Marketplace",
+  "name": "TYME Facebook Poster",
   "version": "1.0.0",
   "description": "Post vehicle listings to Facebook Marketplace in one click",
   "permissions": ["activeTab", "scripting", "storage", "clipboardWrite"],

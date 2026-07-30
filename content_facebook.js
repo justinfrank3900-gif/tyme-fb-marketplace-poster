@@ -42,6 +42,31 @@ async function clickDropdownAndSelect(trigger, optionText) {
   return false;
 }
 
+// Facebook's Model/Mileage/Price/Description inputs have NO placeholder, aria-label, or
+// name attribute at all - the "Model"/"Mileage" text you see is a separate floating label
+// element sitting next to the real input, not part of the input itself. So instead of
+// matching an attribute, find the visible label text, then find the nearest input/textarea
+// in the same form row (walking up a few parent levels until one turns up).
+function findInputNearLabel(labelText, tagName='input') {
+  const allEls = Array.from(document.querySelectorAll('span,div,label'));
+  const labelEl = allEls.find(el => {
+    if (el.offsetParent === null) return false;
+    const directText = Array.from(el.childNodes)
+      .filter(n => n.nodeType === 3)
+      .map(n => n.textContent.trim()).join('');
+    return directText === labelText;
+  });
+  if (!labelEl) return null;
+  let container = labelEl;
+  for (let i = 0; i < 6; i++) {
+    container = container.parentElement;
+    if (!container) break;
+    const field = container.querySelector(tagName);
+    if (field) return field;
+  }
+  return null;
+}
+
 async function fillListing(data) {
   await new Promise(r => setTimeout(r, 2000));
 
@@ -77,22 +102,22 @@ async function fillListing(data) {
     } catch(_) {}
   }
 
-  // Model (plain text input, appears after Make is set)
+  // Model (plain text input, no placeholder/aria-label - find by its floating label)
   if (data.model) {
     try {
-      const modelEl = await waitForEl('input[aria-label*="Model" i], input[placeholder*="Model" i]', 6000);
-      setNativeValue(modelEl, data.model);
+      const modelEl = findInputNearLabel('Model');
+      if (modelEl) setNativeValue(modelEl, data.model);
       await new Promise(r => setTimeout(r, 400));
     } catch(_) {}
   }
 
-  // Mileage (plain text input)
+  // Mileage (plain text input, no placeholder/aria-label - find by its floating label)
   if (data.kms) {
     try {
       const kmNum = String(data.kms).replace(/[^0-9]/g, '');
       if (kmNum) {
-        const mileageEl = await waitForEl('input[aria-label*="Mileage" i], input[placeholder*="Mileage" i]', 5000);
-        setNativeValue(mileageEl, kmNum);
+        const mileageEl = findInputNearLabel('Mileage');
+        if (mileageEl) setNativeValue(mileageEl, kmNum);
         await new Promise(r => setTimeout(r, 400));
       }
     } catch(_) {}
@@ -110,8 +135,8 @@ async function fillListing(data) {
   const priceNum = (data.todayPrice || '').replace(/[^0-9]/g, '');
   if (priceNum) {
     try {
-      const priceEl = await waitForEl('input[placeholder*="rice"]', 5000);
-      setNativeValue(priceEl, priceNum);
+      const priceEl = findInputNearLabel('Price') || document.querySelector('input[placeholder*="rice"]');
+      if (priceEl) setNativeValue(priceEl, priceNum);
     } catch(_) {}
   }
   const lines = [];
@@ -131,8 +156,8 @@ async function fillListing(data) {
   lines.push('📲 DM us or comment below to get started!');
   lines.push('#SubprimeAuto #CarLoans #BadCredit #GetApproved #EasyAutoLoans');
   try {
-    const desc = await waitForEl('textarea[placeholder*="escription"], textarea[aria-label*="escription"]', 6000);
-    setNativeValue(desc, lines.join('\n'));
+    const desc = findInputNearLabel('Description', 'textarea') || document.querySelector('textarea[placeholder*="escription" i], textarea[aria-label*="escription" i]');
+    if (desc) setNativeValue(desc, lines.join('\n'));
   } catch(_) {}
   if (data.images?.length) {
     const files = [];
